@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#17112A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Paint Loop">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%2317112A'/%3E%3Cellipse cx='24' cy='28' rx='12' ry='9' fill='%235EE08A'/%3E%3Cellipse cx='34' cy='22' rx='8' ry='7' fill='%235EE08A'/%3E%3Ccircle cx='36' cy='20' r='4' fill='white'/%3E%3Ccircle cx='37' cy='20' r='2' fill='%2317112A'/%3E%3C/svg%3E">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{margin:0;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+body{font:14px system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+[hidden]{display:none!important}
+img{max-width:100%}
+</style>
+<title>Paint Loop Shooter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800&display=swap">
+<style>
+/* Layout: one narrow phone-shaped column; mascot header, hint strip, board, waiting slots, chameleon deck. Single dark arcade look by choice. */
+:root {
+  --bg: #17112A;
+  --panel: #241A3B;
+  --panel-2: #2C2147;
+  --line: #4A3B72;
+  --fg: #F4EEFF;
+  --muted: #C7BCE6;
+  --accent: #5EE08A;
+  --tongue: #FF7AA8;
+  --font: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); }
+.app {
+  max-width: 440px; margin: 0 auto; min-height: 100%;
+  box-sizing: border-box;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 20px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.brand svg { flex: none; }
+.brand h1 { font-size: 20px; font-weight: 800; margin: 0; line-height: 1; }
+.brand h1 span { color: var(--accent); }
+.brand small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: 3px; }
+.controls { display: flex; gap: 6px; flex-wrap: wrap; }
+select, .btn {
+  font-family: var(--font); font-size: 14px; font-weight: 700; color: var(--fg);
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
+  height: 40px; padding: 0 12px; cursor: pointer;
+}
+.btn[aria-pressed="false"] { color: var(--muted); }
+select:focus-visible, .btn:focus-visible, .shooter-btn:focus-visible, canvas:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hint {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 12px; font-size: 14px; line-height: 1.4; color: var(--muted); min-height: 40px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.hint svg { flex: none; }
+.hint b { color: var(--fg); }
+.board { position: relative; width: 100%; aspect-ratio: 360 / 440; max-width: 100%; }
+canvas { width: 100%; height: 100%; display: block; border-radius: 18px; touch-action: manipulation; }
+.toast {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+  background: rgba(23,17,42,0.92); border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 12px; font-size: 13px; white-space: nowrap; pointer-events: none;
+}
+.row-label { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.slots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.slot {
+  aspect-ratio: 1; border-radius: 14px; border: 2px dashed var(--line); background: transparent;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 12px; }
+.col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 96px; }
+.shooter-btn {
+  width: 60px; height: 60px; border-radius: 30px; border: 0; cursor: pointer;
+  background: var(--panel-2); display: flex; align-items: center; justify-content: center; padding: 2px; box-sizing: border-box;
+}
+.shooter-btn:hover { background: var(--line); }
+.slot .shooter-btn { width: 92%; height: 92%; max-width: 60px; max-height: 60px; background: transparent; }
+.next { display: flex; gap: 5px; }
+.next span { width: 16px; height: 16px; border-radius: 8px; opacity: 0.75; }
+.more { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.empty-col { font-size: 12px; color: var(--muted); padding-top: 18px; }
+.overlay {
+  position: absolute; inset: 0; border-radius: 18px; background: rgba(23,17,42,0.82);
+  display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;
+}
+.card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 18px; padding: 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 280px; }
+.card h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.card p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
+.card .actions { display: flex; gap: 8px; justify-content: center; }
+.btn.primary { background: var(--accent); color: #17112A; border-color: var(--accent); }
+.foot { font-size: 12px; color: var(--muted); line-height: 1.4; margin: 0; }
+.col { position: relative; }
+.hand { position: absolute; top: 36px; left: 50%; width: 38px; height: 38px; margin-left: -6px; pointer-events: none; animation: tap 1s ease-in-out infinite; z-index: 2; }
+@keyframes tap { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-4px, -10px); } }
+@keyframes warn { 0%, 100% { border-color: #E5484D; } 50% { border-color: #4A3B72; } }
+.slots.warn .slot:empty { animation: warn 0.8s ease-in-out infinite; border-style: solid; }
+.counts-warn { color: #FF8A8E; font-weight: 700; }
+.boosters { display: flex; gap: 8px; }
+.booster { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; height: 44px; }
+.booster .n { min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent); color: #17112A; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+.booster:disabled { opacity: 0.45; cursor: default; }
+.booster[aria-pressed="true"] { background: var(--accent); color: #17112A; border-color: var(--accent); }
+.pick-list { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.pick-list .shooter-btn { width: 46px; height: 46px; }
+@media (prefers-reduced-motion: reduce) { .hand, .slots.warn .slot:empty { animation: none; } }
+.scorebar { display: flex; align-items: center; gap: 10px; }
+.score { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 72px; }
+.combo { font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.combo.hot { background: var(--tongue); color: #17112A; border-color: var(--tongue); }
+.starbar { flex: 1; position: relative; height: 10px; border-radius: 5px; background: var(--panel-2); min-width: 0; }
+.starbar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: #F5C518; width: 0; }
+.starbar .mark { position: absolute; top: -5px; width: 20px; height: 20px; margin-left: -10px; }
+.stars { display: flex; gap: 4px; }
+.breakdown { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13px; color: var(--muted); text-align: left; font-variant-numeric: tabular-nums; }
+.breakdown b { color: var(--fg); }
+.breakdown .total { color: var(--fg); font-weight: 800; font-size: 15px; border-top: 1px solid var(--line); padding-top: 6px; }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg width="46" height="46" viewBox="0 0 48 48" role="img" aria-label="Kami the chameleon">
+        <circle cx="24" cy="24" r="23" fill="#2C2147"></circle>
+        <path d="M12 30a6 6 0 1 0 6-6" fill="none" stroke="#5EE08A" stroke-width="4" stroke-linecap="round"></path>
+        <ellipse cx="25" cy="27" rx="11" ry="8" fill="#5EE08A"></ellipse>
+        <path d="M18 23c3-3 9-3 12 0" fill="none" stroke="#3DB46D" stroke-width="2"></path>
+        <ellipse cx="34" cy="22" rx="8" ry="7" fill="#5EE08A"></ellipse>
+        <path d="M29 16l3-3 3 3" fill="#3DB46D"></path>
+        <circle cx="36" cy="20" r="4" fill="#FFFFFF"></circle>
+        <circle cx="37" cy="20" r="2" fill="#17112A"></circle>
+        <path d="M41 24c3 0 4 2 4 4" fill="none" stroke="#FF7AA8" stroke-width="2" stroke-linecap="round"></path>
+        <circle cx="45" cy="29" r="2" fill="#F5C518"></circle>
+      </svg>
+      <div>
+        <h1>Paint <span>Loop</span></h1>
+        <small>Kami and the color chameleons</small>
+      </div>
+    </div>
+    <div class="controls">
+      <label for="level" style="position:absolute;left:-9999px">Level</label>
+      <select id="level"></select>
+      <button class="btn" id="music" type="button" aria-pressed="true" aria-label="Music">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-3px"><path d="M9 18V5l11-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg>
+      </button>
+      <button class="btn" id="speed" type="button" aria-label="Toggle speed">1x</button>
+      <button class="btn" id="restart" type="button">Restart</button>
+    </div>
+  </header>
+
+  <div class="hint"><span id="hint"></span></div>
+
+  <div class="scorebar" aria-live="polite">
+    <span class="score" id="score">0</span>
+    <span class="combo" id="combo">Combo x1</span>
+    <div class="starbar" aria-label="Progress toward stars">
+      <div class="fill" id="starfill"></div>
+      <svg class="mark" id="mark1" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"></path></svg>
+      <svg class="mark" id="mark2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"></path></svg>
+      <svg class="mark" id="mark3" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"></path></svg>
+    </div>
+  </div>
+
+  <div class="board">
+    <canvas id="cv" tabindex="0" aria-label="Game board: chameleons ride a conveyor loop around a pixel picture. Tap a color gate to open or close it."></canvas>
+    <div class="toast" id="toast" hidden></div>
+    <div class="overlay" id="overlay" hidden>
+      <div class="card">
+        <svg width="64" height="64" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M12 30a6 6 0 1 0 6-6" fill="none" stroke="#5EE08A" stroke-width="4" stroke-linecap="round"></path>
+          <ellipse cx="25" cy="27" rx="11" ry="8" fill="#5EE08A"></ellipse>
+          <ellipse cx="34" cy="22" rx="8" ry="7" fill="#5EE08A"></ellipse>
+          <circle cx="36" cy="20" r="4" fill="#FFFFFF"></circle>
+          <circle cx="37" cy="20" r="2" fill="#17112A"></circle>
+          <path d="M33 26q3 2 6 0" fill="none" stroke="#17112A" stroke-width="1.6" stroke-linecap="round"></path>
+        </svg>
+        <h2 id="ov-title">Picture complete</h2>
+        <div class="stars" id="ov-stars"></div>
+        <p id="ov-text"></p>
+        <div class="breakdown" id="ov-breakdown"></div>
+        <div class="actions">
+          <button class="btn" id="ov-retry" type="button">Retry</button>
+          <button class="btn primary" id="ov-next" type="button">Next level</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-label"><span>Resting branch</span><span id="counts"></span></div>
+  <div class="slots" id="slots"></div>
+
+  <div class="boosters">
+    <button class="btn booster" id="b-spot" type="button">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      Branch spot <span class="n" id="b-spot-n">1</span>
+    </button>
+    <button class="btn booster" id="b-pick" type="button" aria-pressed="false">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5a2 2 0 014 0v6"></path><path d="M13 10a2 2 0 014 0v2a2 2 0 014 0v3a7 7 0 01-7 7h-1a7 7 0 01-6-3l-3-5a2 2 0 013-2l2 2"></path></svg>
+      Pick any <span class="n" id="b-pick-n">1</span>
+    </button>
+  </div>
+
+  <div class="row-label"><span>Chameleons</span><span>Tap the front one to send it</span></div>
+  <div class="deck" id="deck"></div>
+
+  <p class="foot">Prototype for feel testing. Tap anywhere to start the music. Levels 1 to 3 have no gates. Levels 4 to 6 add color gates: red + yellow = orange, blue + yellow = green, red + blue = purple. Scoring: 10 per pixel; quick snaps in a row build a combo up to x5; pixels eaten after a color change score double; empty branch spots and unused chameleons add a bonus at the end.</p>
+</div>
+
+<script>
+(function () {
+  var COLORS = { R: '#E5484D', Y: '#F5C518', B: '#3D7BE0', O: '#F58A1F', G: '#2FA65A', P: '#9A62E0' };
+  var DARK = { R: '#A82E33', Y: '#B8900C', B: '#2554A3', O: '#B5620F', G: '#1F7540', P: '#6C40A8' };
+  var NAMES = { R: 'red', Y: 'yellow', B: 'blue', O: 'orange', G: 'green', P: 'purple' };
+  var W = 360, H = 440, X0 = 24, Y0 = 24, X1 = 336, Y1 = 416, RAD = 26, TRACK = 30;
+  var SPEED = 150, CAP = 5, SLOTS = 5, TONGUE = 0.24, COMBO_GAP = 1.5;
+  function mult() { return 1 + Math.min(4, Math.floor(S.combo / 5)); }
+  var best = {};
+  try { best = JSON.parse(localStorage.getItem('paintloop-best') || '{}') || {}; } catch (e) { best = {}; }
+  function saveBest() { try { localStorage.setItem('paintloop-best', JSON.stringify(best)); } catch (e) {} }
+  var STAR_PATH = '<path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.2l7.1-.6z"></path>';
+  function starsHTML(n, size) {
+    var s = '';
+    for (var k = 1; k <= 3; k++) s += '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="' + (k <= n ? '#F5C518' : '#4A3B72') + '" aria-hidden="true">' + STAR_PATH + '</svg>';
+    return s;
+  }
+
+  var LEVELS = [
+    { name: 'Heart', gates: [], extra: 0,
+      hint: '<b>Tap a chameleon</b> to send it around the belt. Its tongue snaps the nearest pixel of its own color.',
+      art: ['.RR.RR.', 'RRRRRRR', 'RRYYYRR', 'RRRYRRR', '.RRRRR.', '..RRR..', '...R...'] },
+    { name: 'Tulip', gates: [], extra: 0,
+      hint: 'Chameleons that are still hungry rest on the <b>branch</b>. Tap them to send them again. If all 5 spots fill up, you lose.',
+      art: ['.R..R..R.', '.RR.R.RR.', '.RRRRRRR.', '.RRRRRRR.', '..RRRRR..', '....G....', '.GG.G....', '..GGG.GG.', '....GGG..', '....G....'] },
+    { name: 'Mushroom', gates: [], extra: 0,
+      hint: 'Plan the order. Inner pixels only open up once the outer ones are gone.',
+      art: ['...RRR...', '.RRYRRRR.', 'RRRRRRYRR', 'RYRRRRRRR', 'RRRRYRRRR', '...YYY...', '...YYY...', '..YYYYY..', 'BBBBBBBBB'] },
+    { name: 'Sun', gates: [{ side: 'right', frac: 0.5, color: 'Y' }], extra: 3,
+      hint: '<b>New: color gate.</b> A red chameleon that walks through the yellow gate turns orange and can snap orange pixels.',
+      art: ['....Y....', '.Y.....Y.', '...OOO...', '..OOOOO..', 'Y.OOOOO.Y', '..OOOOO..', '...OOO...', '.Y.....Y.', '....Y....'] },
+    { name: 'Leaf', gates: [{ side: 'right', frac: 0.5, color: 'Y' }], extra: 3,
+      hint: 'Blue through yellow makes <b>green</b>. Before the gate a blue chameleon can only snap blue.',
+      art: ['......GG', '....GGGG', '...GGYGG', '..GGYGGG', '.GGYGGG.', 'GGYGGG..', 'BYGG....', 'YBB.....', 'BB......'] },
+    { name: 'Grapes', gates: [{ side: 'right', frac: 0.5, color: 'Y' }, { side: 'top', frac: 0.5, color: 'B' }], extra: 3,
+      hint: '<b>Two gates.</b> Tap a gate to close it. Red through blue makes purple, but only if it skips the yellow gate first.',
+      art: ['...GGO...', '..GG.O...', '...PPPP..', '..PPPPPP.', '..PPPPPP.', '...PPPP..', '....PP...'] }
+  ];
+
+  // ---------- loop path ----------
+  var segs = [], TOTAL = 0;
+  function line(ax, ay, bx, by, side) { var len = Math.hypot(bx - ax, by - ay); segs.push({ t: 'l', ax: ax, ay: ay, bx: bx, by: by, len: len, side: side, s: TOTAL }); TOTAL += len; }
+  function arc(cx, cy, a0, a1) { var len = RAD * Math.abs(a1 - a0); segs.push({ t: 'a', cx: cx, cy: cy, a0: a0, a1: a1, len: len, s: TOTAL }); TOTAL += len; }
+  line(X0 + RAD, Y1, X1 - RAD, Y1, 'bottom'); arc(X1 - RAD, Y1 - RAD, Math.PI / 2, 0);
+  line(X1, Y1 - RAD, X1, Y0 + RAD, 'right'); arc(X1 - RAD, Y0 + RAD, 0, -Math.PI / 2);
+  line(X1 - RAD, Y0, X0 + RAD, Y0, 'top'); arc(X0 + RAD, Y0 + RAD, -Math.PI / 2, -Math.PI);
+  line(X0, Y0 + RAD, X0, Y1 - RAD, 'left'); arc(X0 + RAD, Y1 - RAD, Math.PI, Math.PI / 2);
+
+  function at(d) {
+    d = ((d % TOTAL) + TOTAL) % TOTAL;
+    for (var i = 0; i < segs.length; i++) {
+      var g = segs[i];
+      if (d <= g.s + g.len) {
+        var f = (d - g.s) / g.len;
+        if (g.t === 'l') return { x: g.ax + (g.bx - g.ax) * f, y: g.ay + (g.by - g.ay) * f, side: g.side };
+        var a = g.a0 + (g.a1 - g.a0) * f;
+        return { x: g.cx + RAD * Math.cos(a), y: g.cy + RAD * Math.sin(a), side: null };
+      }
+    }
+    return { x: X0 + RAD, y: Y1, side: 'bottom' };
+  }
+
+  function mix(c, g) {
+    if (c === g) return c;
+    var prim = 'RYB';
+    if (prim.indexOf(c) < 0 || prim.indexOf(g) < 0) return c;
+    var k = [c, g].sort().join('');
+    return { RY: 'O', BY: 'G', BR: 'P' }[k] || c;
+  }
+
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  // ---------- audio: generated music and effects ----------
+  var AC = null, master = null, musicBus = null, sfxBus = null, noiseBuf = null;
+  var musicOn = true, musicTimer = null, nextT = 0, stepI = 0, STEP = 60 / 104 / 2;
+  var MELODY = [72, 0, 76, 79, 0, 76, 74, 0, 72, 0, 69, 72, 0, 74, 76, 0, 69, 0, 72, 77, 0, 76, 74, 0, 71, 0, 74, 79, 0, 77, 76, 74];
+  var ROOTS = [48, 45, 41, 43];
+  function mf(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  function initAudio() {
+    if (AC) return;
+    var C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+    try {
+      AC = new C();
+      master = AC.createGain(); master.gain.value = 0.9; master.connect(AC.destination);
+      musicBus = AC.createGain(); musicBus.gain.value = 0.14; musicBus.connect(master);
+      sfxBus = AC.createGain(); sfxBus.gain.value = 0.22; sfxBus.connect(master);
+      noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.05, AC.sampleRate);
+      var data = noiseBuf.getChannelData(0); for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    } catch (e) { AC = null; }
+  }
+  function tone(freq, t, dur, type, bus, vol, slideTo) {
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function hat(t) {
+    var s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+    s.buffer = noiseBuf; f.type = 'highpass'; f.frequency.value = 6000;
+    g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    s.connect(f); f.connect(g); g.connect(musicBus); s.start(t);
+  }
+  function playStep(i, t) {
+    var bar = Math.floor(i / 8) % 4, inBar = i % 8, root = ROOTS[bar];
+    if (MELODY[i]) tone(mf(MELODY[i]), t, STEP * 1.6, 'triangle', musicBus, 0.5);
+    if (inBar === 0) tone(mf(root), t, STEP * 3.5, 'sine', musicBus, 0.8);
+    if (inBar === 4) tone(mf(root + 7), t, STEP * 3.5, 'sine', musicBus, 0.6);
+    if (inBar === 0 || inBar === 4) tone(130, t, 0.12, 'sine', musicBus, 0.9, 45);
+    if (inBar % 2 === 1) hat(t);
+  }
+  function schedule() { if (!AC) return; while (nextT < AC.currentTime + 0.12) { playStep(stepI, nextT); nextT += STEP; stepI = (stepI + 1) % 32; } }
+  function startMusic() { if (!AC || musicTimer) return; nextT = AC.currentTime + 0.05; musicTimer = setInterval(schedule, 25); }
+  function stopMusic() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } }
+  function sfx(kind) {
+    if (!AC) return; var t = AC.currentTime;
+    if (kind === 'snap') tone(520 + Math.random() * 120, t, 0.08, 'square', sfxBus, 0.25, 980);
+    else if (kind === 'gate') { [0, 4, 7, 12].forEach(function (n, k) { tone(mf(76 + n), t + k * 0.05, 0.18, 'triangle', sfxBus, 0.4); }); }
+    else if (kind === 'send') tone(300, t, 0.1, 'sine', sfxBus, 0.4, 600);
+    else if (kind === 'win') { [0, 4, 7, 12, 16].forEach(function (n, k) { tone(mf(72 + n), t + k * 0.09, 0.3, 'triangle', sfxBus, 0.5); }); }
+    else if (kind === 'lose') { [7, 4, 0].forEach(function (n, k) { tone(mf(60 + n), t + k * 0.14, 0.3, 'sine', sfxBus, 0.5); }); }
+  }
+  function firstTouch(e) {
+    initAudio();
+    if (AC && AC.state === 'suspended') AC.resume();
+    var onMusicBtn = e && e.target && e.target.closest && e.target.closest('#music');
+    if (musicOn && !onMusicBtn) startMusic();
+    document.removeEventListener('pointerdown', firstTouch);
+    document.removeEventListener('keydown', firstTouch);
+  }
+  document.addEventListener('pointerdown', firstTouch);
+  document.addEventListener('keydown', firstTouch);
+
+  // ---------- state ----------
+  var S = null, speedMul = 1;
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  var $ = function (id) { return document.getElementById(id); };
+
+  function loadLevel(i) {
+    var L = LEVELS[i];
+    var rows = L.art.length, cols = 0;
+    L.art.forEach(function (r) { cols = Math.max(cols, r.length); });
+    var cells = [], counts = {}, remaining = 0;
+    for (var r = 0; r < rows; r++) {
+      cells.push([]);
+      for (var c = 0; c < cols; c++) {
+        var ch = L.art[r][c] || '.';
+        if (ch === '.') { cells[r].push(null); continue; }
+        cells[r].push(ch); counts[ch] = (counts[ch] || 0) + 1; remaining++;
+      }
+    }
+    var cs = Math.floor(Math.min(30, 244 / cols, 324 / rows));
+    var gx = 180 - cols * cs / 2, gy = 220 - rows * cs / 2;
+
+    var base = { R: 0, Y: 0, B: 0 };
+    base.R += (counts.R || 0) + (counts.O || 0) + (counts.P || 0);
+    base.Y += counts.Y || 0;
+    base.B += (counts.B || 0) + (counts.G || 0);
+    if (L.extra) { if (counts.O || counts.P) base.R += L.extra; if (counts.G) base.B += L.extra; }
+    var rand = rng(1000 + i * 77), list = [];
+    Object.keys(base).forEach(function (k) {
+      var total = base[k];
+      while (total > 0) {
+        var n = 5 + Math.floor(rand() * 5);
+        if (total - n < 4) n = total;
+        list.push({ c: k, ammo: n }); total -= n;
+      }
+    });
+    for (var j = list.length - 1; j > 0; j--) { var q = Math.floor(rand() * (j + 1)); var tmp = list[j]; list[j] = list[q]; list[q] = tmp; }
+    var deck = [[], [], []];
+    list.forEach(function (s, idx) { deck[idx % 3].push(s); });
+
+    var gates = L.gates.map(function (g) {
+      var seg = segs.filter(function (s) { return s.side === g.side; })[0];
+      var s = seg.s + g.frac * seg.len, p = at(s);
+      return { side: g.side, color: g.color, s: s, x: p.x, y: p.y, open: true, flash: 0 };
+    });
+
+    S = { i: i, L: L, rows: rows, cols: cols, cells: cells, cs: cs, gx: gx, gy: gy, gates: gates, time: 0,
+      loop: [], slots: new Array(SLOTS).fill(null), deck: deck, shots: [], pops: [], over: false, remaining: remaining,
+      sinceSnap: 0, boost: 1, tutSent: false, tutGate: false, tutToggled: false, warned: false,
+      spotLeft: 1, pickLeft: 1, pick: false, usedBooster: false,
+      pixels: remaining, score: 0, base: 0, comboPts: 0, gatePts: 0, combo: 0, comboT: 99, bestCombo: 0, floats: [],
+      star1: 0, star2: Math.round(remaining * 10 * 1.4 / 10) * 10, star3: Math.round(remaining * 10 * 2.0 / 10) * 10 };
+    $('level').value = String(i);
+    $('hint').innerHTML = L.hint;
+    $('overlay').hidden = true;
+    renderUI();
+  }
+
+  // ---------- UI ----------
+  var toastTimer = 0;
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 1600); }
+
+  function chamSVG(c, ammo) {
+    var col = COLORS[c], dk = DARK[c];
+    return '<svg width="100%" height="100%" viewBox="0 0 48 48" aria-hidden="true">' +
+      '<path d="M11 30a6 6 0 1 0 6-6" fill="none" stroke="' + col + '" stroke-width="4" stroke-linecap="round"></path>' +
+      '<ellipse cx="24" cy="28" rx="12" ry="9" fill="' + col + '"></ellipse>' +
+      '<path d="M16 24c3-3 10-3 13 0" fill="none" stroke="' + dk + '" stroke-width="2"></path>' +
+      '<ellipse cx="34" cy="22" rx="8" ry="7" fill="' + col + '"></ellipse>' +
+      '<path d="M29 16l3-3 3 3z" fill="' + dk + '"></path>' +
+      '<circle cx="36" cy="20" r="4" fill="#FFFFFF"></circle><circle cx="37" cy="20" r="2" fill="#17112A"></circle>' +
+      '<path d="M18 36v4M28 36v4" stroke="' + dk + '" stroke-width="3" stroke-linecap="round"></path>' +
+      '<text x="22" y="32" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="12" fill="#FFFFFF" stroke="#17112A" stroke-width="3" paint-order="stroke">' + ammo + '</text>' +
+      '</svg>';
+  }
+
+  function shooterButton(sh, label, onClick) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'shooter-btn';
+    b.innerHTML = chamSVG(sh.c, sh.ammo);
+    b.setAttribute('aria-label', label + ' ' + NAMES[sh.c] + ' chameleon, ' + sh.ammo + ' snaps');
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderUI() {
+    var slotsEl = $('slots'); slotsEl.innerHTML = '';
+    S.slots.forEach(function (sh, idx) {
+      var d = document.createElement('div'); d.className = 'slot';
+      if (sh) d.appendChild(shooterButton(sh, 'Send resting', function () {
+        if (S.over) return;
+        if (deploy(sh)) { S.slots[idx] = null; renderUI(); }
+      }));
+      slotsEl.appendChild(d);
+    });
+    slotsEl.style.gridTemplateColumns = 'repeat(' + S.slots.length + ', minmax(0, 1fr))';
+    var deckEl = $('deck'); deckEl.innerHTML = '';
+    S.deck.forEach(function (col, ci) {
+      var c = document.createElement('div'); c.className = 'col';
+      if (!col.length) { var e = document.createElement('span'); e.className = 'empty-col'; e.textContent = 'Empty'; c.appendChild(e); }
+      else if (S.pick) {
+        var pl = document.createElement('div'); pl.className = 'pick-list';
+        col.forEach(function (s, si) {
+          pl.appendChild(shooterButton(s, 'Pick', function () {
+            if (S.over) return;
+            if (deploy(s)) { col.splice(si, 1); S.pick = false; S.pickLeft--; S.usedBooster = true; renderUI(); }
+          }));
+        });
+        c.appendChild(pl);
+      } else {
+        c.appendChild(shooterButton(col[0], 'Send', function () {
+          if (S.over) return;
+          if (deploy(col[0])) { col.shift(); renderUI(); }
+        }));
+        var nx = document.createElement('div'); nx.className = 'next';
+        col.slice(1, 4).forEach(function (s) { var sp = document.createElement('span'); sp.style.background = COLORS[s.c]; nx.appendChild(sp); });
+        c.appendChild(nx);
+        if (col.length > 4) { var m = document.createElement('span'); m.className = 'more'; m.textContent = '+' + (col.length - 4) + ' more'; c.appendChild(m); }
+        if (S.i === 0 && !S.tutSent && ci === 0) {
+          var hand = document.createElement('div'); hand.className = 'hand';
+          hand.innerHTML = '<svg viewBox="0 0 24 24" width="38" height="38" aria-hidden="true"><path d="M9 11V5a2 2 0 014 0v6M13 10a2 2 0 014 0v2a2 2 0 014 0v3a7 7 0 01-7 7h-1a7 7 0 01-6-3l-3-5a2 2 0 013-2l2 2" fill="#FFFFFF" stroke="#17112A" stroke-width="1.6" stroke-linejoin="round"></path></svg>';
+          c.appendChild(hand);
+        }
+      }
+      deckEl.appendChild(c);
+    });
+    var waiting = S.slots.filter(Boolean).length, free = S.slots.length - waiting;
+    var warn = free <= 1 && !S.over;
+    slotsEl.classList.toggle('warn', warn);
+    if (warn && !S.warned) { S.warned = true; toast(free === 1 ? 'Only 1 branch spot left. Careful!' : 'The branch is full. A returning hungry chameleon ends the level.'); }
+    if (free > 1) S.warned = false;
+    var countsEl = $('counts');
+    countsEl.textContent = 'Belt ' + S.loop.length + ' / ' + CAP + ' · Branch ' + waiting + ' / ' + S.slots.length;
+    countsEl.className = warn ? 'counts-warn' : '';
+    $('b-spot-n').textContent = S.spotLeft; $('b-spot').disabled = S.spotLeft <= 0 || S.over;
+    $('b-pick-n').textContent = S.pickLeft; $('b-pick').disabled = S.pickLeft <= 0 || S.over;
+    $('b-pick').setAttribute('aria-pressed', String(S.pick));
+  }
+
+  function updateHUD() {
+    var live = !S.over && S.comboT < COMBO_GAP, m = live ? mult() : 1;
+    $('score').textContent = S.score.toLocaleString('en-US');
+    var comboEl = $('combo');
+    comboEl.textContent = 'Combo x' + m + (live && S.combo > 1 ? ' · ' + S.combo : '');
+    comboEl.className = 'combo' + (m > 1 ? ' hot' : '');
+    var top = S.star3 * 1.15, marks = [S.pixels * 10, S.star2, S.star3];
+    $('starfill').style.width = Math.min(100, S.score / top * 100) + '%';
+    marks.forEach(function (v, k) {
+      var el = $('mark' + (k + 1));
+      el.style.left = Math.min(97, v / top * 100) + '%';
+      el.setAttribute('fill', S.score >= v ? '#F5C518' : '#6A5A96');
+    });
+  }
+
+  function deploy(sh) {
+    if (S.loop.length >= CAP) { toast('The belt is full. Wait for a chameleon to come round.'); return false; }
+    for (var k = 0; k < S.loop.length; k++) if (S.loop[k].d < 40) { toast('The entrance is busy. Try again in a moment.'); return false; }
+    sh.d = 0; sh.lastLane = -1; sh.flash = 0; sh.ang = 0; var p = at(0); sh.x = p.x; sh.y = p.y;
+    S.loop.push(sh); sfx('send');
+    if (!S.tutSent) { S.tutSent = true; }
+    return true;
+  }
+
+  function endGame(win, text) {
+    if (S.over) return;
+    S.over = true;
+    var rows = '', stars = 0;
+    if (win) {
+      var empty = S.slots.filter(function (s) { return !s; }).length;
+      var unused = S.deck.reduce(function (n, c) { return n + c.length; }, 0);
+      var branchPts = empty * 50, unusedPts = unused * 100, noBoostPts = S.usedBooster ? 0 : 200;
+      S.score += branchPts + unusedPts + noBoostPts;
+      stars = S.score >= S.star3 ? 3 : S.score >= S.star2 ? 2 : 1;
+      var fmt = function (n) { return n.toLocaleString('en-US'); };
+      rows = '<span>Pixels (' + S.pixels + ' x 10)</span><b>' + fmt(S.base) + '</b>' +
+        '<span>Combo bonus (best ' + S.bestCombo + ' in a row)</span><b>' + fmt(S.comboPts) + '</b>' +
+        (S.gates.length ? '<span>Color-change bonus</span><b>' + fmt(S.gatePts) + '</b>' : '') +
+        '<span>Empty branch spots (' + empty + ' x 50)</span><b>' + fmt(branchPts) + '</b>' +
+        '<span>Unused chameleons (' + unused + ' x 100)</span><b>' + fmt(unusedPts) + '</b>' +
+        '<span>No boosters used</span><b>' + fmt(noBoostPts) + '</b>' +
+        '<span class="total">Total</span><span class="total">' + fmt(S.score) + '</span>';
+      var prev = best[S.i];
+      if (!prev || S.score > prev.score) { best[S.i] = { score: S.score, stars: stars }; saveBest(); labelLevels(); text = prev ? 'New best score!' : text; }
+      else text = 'Best: ' + fmt(prev.score) + '. Three stars at ' + fmt(S.star3) + '.';
+    }
+    setTimeout(function () {
+      sfx(win ? 'win' : 'lose');
+      $('ov-title').textContent = win ? 'Picture complete' : 'Level failed';
+      $('ov-stars').innerHTML = win ? starsHTML(stars, 34) : '';
+      $('ov-breakdown').innerHTML = rows;
+      $('ov-breakdown').hidden = !win;
+      $('ov-text').textContent = text;
+      $('ov-next').hidden = !win || S.i >= LEVELS.length - 1;
+      $('overlay').hidden = false;
+    }, win ? 500 : 200);
+  }
+
+  // ---------- simulation ----------
+  function laneOf(p) {
+    if (p.side === 'bottom' || p.side === 'top') { var c = Math.floor((p.x - S.gx) / S.cs); return c >= 0 && c < S.cols ? c : -1; }
+    var r = Math.floor((p.y - S.gy) / S.cs); return r >= 0 && r < S.rows ? r : -1;
+  }
+
+  function tryShoot(sh, side, lane) {
+    var r, c, found = null;
+    if (side === 'bottom') { for (r = S.rows - 1; r >= 0; r--) if (S.cells[r][lane]) { found = [r, lane]; break; } }
+    else if (side === 'top') { for (r = 0; r < S.rows; r++) if (S.cells[r][lane]) { found = [r, lane]; break; } }
+    else if (side === 'left') { for (c = 0; c < S.cols; c++) if (S.cells[lane][c]) { found = [lane, c]; break; } }
+    else { for (c = S.cols - 1; c >= 0; c--) if (S.cells[lane][c]) { found = [lane, c]; break; } }
+    if (!found) return;
+    var col = S.cells[found[0]][found[1]];
+    if (col !== sh.c) return;
+    S.cells[found[0]][found[1]] = null;
+    sh.ammo--; S.remaining--;
+    var cx = S.gx + found[1] * S.cs + S.cs / 2, cy = S.gy + found[0] * S.cs + S.cs / 2;
+    S.sinceSnap = 0;
+    S.combo = S.comboT < COMBO_GAP ? S.combo + 1 : 1; S.comboT = 0;
+    S.bestCombo = Math.max(S.bestCombo, S.combo);
+    var m = mult(), gate = sh.changed ? 10 * m : 0, pts = 10 * m + gate;
+    S.base += 10; S.comboPts += 10 * (m - 1); S.gatePts += gate; S.score += pts;
+    S.floats.push({ x: cx, y: cy, text: '+' + pts, t: 0, hot: gate > 0 });
+    S.shots.push({ sh: sh, x1: cx, y1: cy, c: col, t: 0 });
+    S.pops.push({ x: cx, y: cy, c: col, t: 0, delay: TONGUE / 2 });
+    sfx('snap');
+  }
+
+  function step(dt) {
+    if (!S) return;
+    S.time += dt;
+    S.shots.forEach(function (s) { s.t += dt; }); S.shots = S.shots.filter(function (s) { return s.t < TONGUE; });
+    S.pops.forEach(function (p) { p.t += dt; }); S.pops = S.pops.filter(function (p) { return p.t < 0.35 + (p.delay || 0); });
+    S.gates.forEach(function (g) { g.flash = Math.max(0, g.flash - dt * 2); });
+    S.floats.forEach(function (f) { f.t += dt; }); S.floats = S.floats.filter(function (f) { return f.t < 0.8; });
+    updateHUD();
+    if (S.over) return;
+    S.comboT += dt;
+    S.sinceSnap += dt;
+    var target = S.sinceSnap > 1 && S.loop.length ? 3 : 1;
+    S.boost += (target - S.boost) * Math.min(1, dt * 5);
+    var dist = SPEED * speedMul * S.boost * dt, n = Math.max(1, Math.ceil(dist / 6)), v = dist / n, changed = false;
+    for (var it = 0; it < n && !S.over; it++) S.loop.slice().forEach(function (sh) {
+      var prev = sh.d; sh.d += v;
+      S.gates.forEach(function (g) {
+        if (g.open && prev < g.s && sh.d >= g.s) { var n = mix(sh.c, g.color); if (n !== sh.c) { sh.c = n; sh.flash = 1; sh.changed = true; g.flash = 1; S.tutGate = true; sfx('gate'); } }
+      });
+      sh.flash = Math.max(0, (sh.flash || 0) - dt * 2.5 / n);
+      if (sh.d >= TOTAL) {
+        S.loop.splice(S.loop.indexOf(sh), 1); changed = true;
+        if (sh.ammo > 0) {
+          var idx = S.slots.indexOf(null);
+          if (idx < 0) { endGame(false, 'A hungry chameleon came back and the branch was full.'); return; }
+          S.slots[idx] = sh;
+        }
+        return;
+      }
+      var p = at(sh.d), ahead = at(sh.d + 2);
+      sh.x = p.x; sh.y = p.y; sh.ang = Math.atan2(ahead.y - p.y, ahead.x - p.x);
+      if (p.side) { var lane = laneOf(p); if (lane !== sh.lastLane) { sh.lastLane = lane; if (lane >= 0) tryShoot(sh, p.side, lane); } }
+      else sh.lastLane = -2;
+      if (sh.ammo <= 0) { S.loop.splice(S.loop.indexOf(sh), 1); changed = true; S.pops.push({ x: sh.x, y: sh.y, c: sh.c, t: 0, big: true, delay: TONGUE }); }
+    });
+    if (S.remaining === 0) { endGame(true, 'Kami and friends finished the ' + LEVELS[S.i].name.toLowerCase() + '.'); }
+    else if (!S.over && S.loop.length === 0 && S.slots.every(function (s) { return !s; }) && S.deck.every(function (c) { return !c.length; })) {
+      endGame(false, 'You ran out of chameleons before the picture was cleared.');
+    }
+    if (changed) renderUI();
+  }
+
+  // ---------- drawing ----------
+  function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+  function tracePath() {
+    ctx.beginPath();
+    segs.forEach(function (g, i) {
+      if (g.t === 'l') { if (i === 0) ctx.moveTo(g.ax, g.ay); ctx.lineTo(g.bx, g.by); }
+      else ctx.arc(g.cx, g.cy, RAD, g.a0, g.a1, g.a1 < g.a0);
+    });
+    ctx.closePath();
+  }
+
+  function drawChameleon(sh) {
+    var col = COLORS[sh.c], dk = DARK[sh.c];
+    var bob = Math.sin(S.time * 10 + sh.d * 0.05) * 1.2;
+    ctx.save();
+    ctx.translate(sh.x, sh.y + bob);
+    var flip = Math.cos(sh.ang) < -0.01;
+    ctx.rotate(flip ? sh.ang + Math.PI : sh.ang);
+    if (flip) ctx.scale(-1, 1);
+    // tail curl
+    ctx.beginPath(); ctx.arc(-14, 3, 5, Math.PI * 0.2, Math.PI * 1.6); ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
+    // legs
+    ctx.strokeStyle = dk; ctx.lineWidth = 3;
+    var step = Math.sin(S.time * 14 + sh.d * 0.1) * 2;
+    ctx.beginPath(); ctx.moveTo(-6, 7); ctx.lineTo(-6 + step, 12); ctx.moveTo(6, 7); ctx.lineTo(6 - step, 12); ctx.stroke();
+    // body
+    ctx.beginPath(); ctx.ellipse(0, 1, 13, 9, 0, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 6, 10, Math.PI * 1.15, Math.PI * 1.85); ctx.strokeStyle = dk; ctx.lineWidth = 2; ctx.stroke();
+    // head and crest
+    ctx.beginPath(); ctx.ellipse(12, -3, 8, 7, 0, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(7, -8); ctx.lineTo(10, -13); ctx.lineTo(13, -9); ctx.closePath(); ctx.fillStyle = dk; ctx.fill();
+    // eye
+    ctx.beginPath(); ctx.arc(14, -5, 4, 0, Math.PI * 2); ctx.fillStyle = '#FFFFFF'; ctx.fill();
+    ctx.beginPath(); ctx.arc(15, -5, 2, 0, Math.PI * 2); ctx.fillStyle = '#17112A'; ctx.fill();
+    ctx.restore();
+    if (sh.flash > 0) {
+      ctx.globalAlpha = sh.flash; ctx.beginPath(); ctx.arc(sh.x, sh.y, 20 + 14 * (1 - sh.flash), 0, Math.PI * 2);
+      ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    ctx.font = '800 12px Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = '#17112A'; ctx.strokeText(sh.ammo, sh.x - 1, sh.y + 2 + bob);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillText(sh.ammo, sh.x - 1, sh.y + 2 + bob);
+  }
+
+  function draw() {
+    ctx.fillStyle = '#17112A'; ctx.fillRect(0, 0, W, H);
+    roundRect(X0 + TRACK / 2, Y0 + TRACK / 2, X1 - X0 - TRACK, Y1 - Y0 - TRACK, 12); ctx.fillStyle = '#241A3B'; ctx.fill();
+    tracePath(); ctx.strokeStyle = '#3A2E57'; ctx.lineWidth = TRACK; ctx.stroke();
+    tracePath(); ctx.strokeStyle = '#6A5A96'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#C7BCE6'; ctx.beginPath(); ctx.moveTo(X0 + RAD + 2, Y1 - 7); ctx.lineTo(X0 + RAD + 12, Y1); ctx.lineTo(X0 + RAD + 2, Y1 + 7); ctx.fill();
+    if (!S) return;
+
+    // pixels
+    for (var r = 0; r < S.rows; r++) for (var c = 0; c < S.cols; c++) {
+      var x = S.gx + c * S.cs, y = S.gy + r * S.cs, v = S.cells[r][c];
+      if (v) { roundRect(x + 1, y + 1, S.cs - 2, S.cs - 2, 4); ctx.fillStyle = COLORS[v]; ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x + 3, y + 3, S.cs - 6, 3); }
+    }
+    // gates
+    S.gates.forEach(function (g) {
+      var vertical = g.side === 'top' || g.side === 'bottom';
+      var w = vertical ? 22 : 68, h = vertical ? 68 : 22;
+      var nx = g.side === 'right' ? -1 : g.side === 'left' ? 1 : 0, ny = g.side === 'top' ? 1 : g.side === 'bottom' ? -1 : 0;
+      if (g.flash > 0) { ctx.globalAlpha = g.flash * 0.6; roundRect(g.x - w / 2 - 8, g.y - h / 2 - 8, w + 16, h + 16, 12); ctx.fillStyle = COLORS[g.color]; ctx.fill(); ctx.globalAlpha = 1; }
+      if (g.open) {
+        for (var i = -1; i <= 1; i++) {
+          var off = 16 + 3 * Math.sin(S.time * 3 + i * 1.7);
+          var dx = vertical ? 0 : i * 18, dy = vertical ? i * 18 : 0;
+          ctx.beginPath(); ctx.arc(g.x + dx + nx * off, g.y + dy + ny * off, 4, 0, Math.PI * 2); ctx.fillStyle = COLORS[g.color]; ctx.fill();
+        }
+      }
+      roundRect(g.x - w / 2, g.y - h / 2, w, h, 7);
+      if (g.open) { ctx.fillStyle = COLORS[g.color]; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = '#FFFFFF'; ctx.stroke(); }
+      else { ctx.fillStyle = '#2C2147'; ctx.fill(); ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.strokeStyle = COLORS[g.color]; ctx.stroke(); ctx.setLineDash([]); }
+      ctx.fillStyle = g.open ? '#17112A' : '#C7BCE6'; ctx.font = '800 ' + (g.open ? 18 : 11) + 'px Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(g.open ? '+' : 'OFF', g.x, g.y + 1);
+    });
+    // teaching callouts on gates
+    var callout = null;
+    if (S.gates.length && !S.tutGate && (S.i === 3 || S.i === 4)) callout = { g: S.gates[0], text: 'Color gate' };
+    if (S.i === 5 && !S.tutToggled) callout = { g: S.gates[0], text: 'Tap to close' };
+    if (callout && !S.over) {
+      var g0 = callout.g, pulse = 0.5 + 0.5 * Math.sin(S.time * 5);
+      ctx.globalAlpha = 0.5 + 0.5 * pulse; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(g0.x, g0.y, 40 + 6 * pulse, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.font = '800 13px Rubik, sans-serif';
+      var tw = ctx.measureText(callout.text).width + 20, bx = g0.side === 'right' ? g0.x - 52 - tw : g0.x - tw / 2;
+      var by = g0.side === 'right' ? g0.y - 14 : g0.y + 50;
+      roundRect(bx, by, tw, 28, 14); ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      ctx.fillStyle = '#17112A'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(callout.text, bx + tw / 2, by + 14.5);
+    }
+    // fast-forward indicator
+    if (S.boost > 1.6 && !S.over) {
+      ctx.globalAlpha = Math.min(1, (S.boost - 1.6) / 1.2);
+      ctx.fillStyle = '#C7BCE6'; ctx.font = '800 11px Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('FAST FORWARD', 180, 394); ctx.globalAlpha = 1;
+    }
+    // pops (pixel bursts once the tongue arrives)
+    S.pops.forEach(function (p) {
+      var t = p.t - (p.delay || 0); if (t < 0) return;
+      var k = t / 0.35, size = (p.big ? 18 : S.cs / 2) * (1 + k);
+      ctx.globalAlpha = 1 - k; ctx.strokeStyle = COLORS[p.c]; ctx.lineWidth = 3;
+      roundRect(p.x - size / 2, p.y - size / 2, size, size, 5); ctx.stroke(); ctx.globalAlpha = 1;
+    });
+    // chameleons
+    S.loop.forEach(drawChameleon);
+    // tongues
+    S.shots.forEach(function (s) {
+      var k = s.t / TONGUE, reach = k < 0.5 ? k * 2 : (1 - k) * 2;
+      var sx = s.sh.x, sy = s.sh.y;
+      var ex = sx + (s.x1 - sx) * reach, ey = sy + (s.y1 - sy) * reach;
+      ctx.strokeStyle = '#FF7AA8'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ex, ey, k < 0.5 ? 4.5 : 5.5, 0, Math.PI * 2); ctx.fillStyle = k < 0.5 ? '#FF7AA8' : COLORS[s.c]; ctx.fill();
+    });
+    // floating points
+    S.floats.forEach(function (f) {
+      var k = f.t / 0.8;
+      ctx.globalAlpha = 1 - k * k;
+      ctx.font = '800 ' + (f.hot ? 15 : 12) + 'px Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = '#17112A'; ctx.strokeText(f.text, f.x, f.y - 22 * k);
+      ctx.fillStyle = f.hot ? '#5EE08A' : '#FFFFFF'; ctx.fillText(f.text, f.x, f.y - 22 * k);
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  function resize() {
+    var rect = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    cv.width = Math.max(1, Math.round(rect.width * dpr)); cv.height = Math.max(1, Math.round(rect.height * dpr));
+    ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+  }
+
+  var last = 0;
+  function frame(t) {
+    var dt = last ? Math.min(0.05, (t - last) / 1000) : 0; last = t;
+    step(dt); draw();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- input ----------
+  function toggleGate(g) { g.open = !g.open; S.tutToggled = true; toast((g.open ? 'Opened' : 'Closed') + ' the ' + NAMES[g.color] + ' gate'); }
+  cv.addEventListener('click', function (e) {
+    if (!S || S.over) return;
+    var rect = cv.getBoundingClientRect();
+    var x = (e.clientX - rect.left) * W / rect.width, y = (e.clientY - rect.top) * H / rect.height;
+    S.gates.forEach(function (g) { if (Math.hypot(x - g.x, y - g.y) < 38) toggleGate(g); });
+  });
+  cv.addEventListener('keydown', function (e) {
+    if (!S || !S.gates.length) return;
+    var n = parseInt(e.key, 10);
+    if (n >= 1 && n <= S.gates.length) toggleGate(S.gates[n - 1]);
+  });
+
+  var sel = $('level');
+  function labelLevels() {
+    var cur = sel.value; sel.innerHTML = '';
+    LEVELS.forEach(function (L, i) {
+      var o = document.createElement('option'); o.value = String(i);
+      var b = best[i], st = b ? ' ' + '★★★'.slice(0, b.stars) + '☆☆☆'.slice(0, 3 - b.stars) : '';
+      o.textContent = 'Level ' + (i + 1) + ': ' + L.name + (L.gates.length ? ' (gates)' : '') + st;
+      sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  }
+  labelLevels();
+  sel.addEventListener('change', function () { loadLevel(parseInt(sel.value, 10)); });
+  $('restart').addEventListener('click', function () { loadLevel(S.i); });
+  $('ov-retry').addEventListener('click', function () { loadLevel(S.i); });
+  $('ov-next').addEventListener('click', function () { loadLevel(Math.min(LEVELS.length - 1, S.i + 1)); });
+  $('b-spot').addEventListener('click', function () {
+    if (!S || S.over || S.spotLeft <= 0) return;
+    S.slots.push(null); S.spotLeft--; S.usedBooster = true;
+    toast('Added a branch spot'); renderUI();
+  });
+  $('b-pick').addEventListener('click', function () {
+    if (!S || S.over || S.pickLeft <= 0) return;
+    S.pick = !S.pick;
+    if (S.pick) toast('Tap any chameleon in the columns');
+    renderUI();
+  });
+  $('speed').addEventListener('click', function () { speedMul = speedMul === 1 ? 2 : 1; this.textContent = speedMul + 'x'; });
+  $('music').addEventListener('click', function () {
+    initAudio(); if (AC && AC.state === 'suspended') AC.resume();
+    if (musicOn && !musicTimer) { startMusic(); return; }
+    musicOn = !musicOn; this.setAttribute('aria-pressed', String(musicOn));
+    if (musicOn) startMusic(); else stopMusic();
+  });
+  window.addEventListener('resize', resize);
+
+  function start(data) {
+    resize();
+    loadLevel(data && typeof data.level === 'number' ? data.level : 0);
+    requestAnimationFrame(frame);
+  }
+  if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(function () { stopMusic(); return { level: S ? S.i : 0 }; });
+  if (window.claude && window.claude.hot && window.claude.hot.ready) window.claude.hot.ready(start);
+  else start((window.claude && window.claude.hot && window.claude.hot.data) || {});
+})();
+</script>
+
+</body>
+</html>
